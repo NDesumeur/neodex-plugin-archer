@@ -1,0 +1,22 @@
+{
+  "id": "neodex.archer",
+  "name": "Archer",
+  "version": "1.0.0",
+  "author": "NDesumeur",
+  "description": "Dix flèches, une cible de plus en plus loin et un vent qui change. Tire en arrière pour bander l'arc, lâche pour tirer.",
+  "icon": "icon.png",
+  "entry": "index.js",
+  "view": "archer",
+  "neobase": ">=4.0.0",
+  "type": "app",
+  "category": "Jeux",
+  "syncMode": "progression",
+  "syncInfo": "Meilleure manche, dans le mille.",
+  "mobile": false,
+  "system": false,
+  "dependencies": {},
+  "sdk": "2.1.0",
+  "permissions": [
+    "storage"
+  ]
+}
