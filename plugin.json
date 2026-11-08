@@ -1,7 +1,7 @@
 {
   "id": "neodex.archer",
   "name": "Archer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "NDesumeur",
   "description": "Jeu de tir à l'arc : maintiens le clic et tire la souris en arrière pour viser et doser la force, puis lâche. Dix flèches par manche, 10 points au centre de la cible et 1 au bord ; la manche à air montre un vent qui change à chaque tir, et la cible recule toutes les trois flèches avant de se mettre à bouger.",
   "icon": "icon.png",
