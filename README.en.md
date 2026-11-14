@@ -1,6 +1,6 @@
 # Archer
 
-An archery game: ten arrows per round, a target that moves further away and then starts moving, and a wind that changes with every shot. Judge the power, aim with the wind in mind and go for the best round out of 100 points.
+A pixel art archery game: a tournament of 12 events in different places, with targets, balloons and clay discs, wind, and up to 3 stars per event. Plus a 60-second rapid fire.
 
 *Version française : [README.md](README.md)*
 
@@ -12,18 +12,29 @@ An archery game: ten arrows per round, a target that moves further away and then
 
 ## The wind
 
-The **windsock** shows the direction and strength of the wind for the current shot. It changes with every arrow: a headwind shortens the shot, a crosswind pushes it aside. Aim a little higher or into the wind to make up for it.
+The **windsock** shows the direction and strength of the wind for the current shot. It changes with every arrow: a headwind shortens the shot, a crosswind pushes it aside. Aim a little higher or against the wind to make up for it.
 
-## A round
+## The tournament
 
-- A round has **10 arrows**.
-- The centre of the target is worth **10 points**, the outer ring **1 point**; an arrow off the target is a miss.
-- The target **moves back every three arrows**, then, at the end of the round, it **moves around**: you have to anticipate where it will be.
-- At the end, your total out of 100 is shown; one click starts a new round.
+- **12 events** in different places: meadow, orchard, forest, castle, beach, at night, cliffs. Each has its own number of arrows, wind and targets.
+- **Targets**: the centre is worth **10 points**, the outer ring **1 point**. Some of them move.
+- **Balloons** (5 points) and **clay discs** (8 points) burst on the way: the arrow keeps going and can hit several.
+- Each event gives **1 to 3 stars** depending on the points (the three levels are shown at the top). An event opens when the previous one has at least one star.
+- At the start, the camera goes to show the target and comes back (click to skip). An arrow points to targets off screen with their distance.
+
+## The show
+
+- The **camera follows the arrow** and **slows down** as it nears a target.
+- A **magnifier** shows the target face-on and the arrow's hole. A **bullseye** gets its fanfare.
+- At the end, a **recap**: points, stars, and Replay, Next and Menu buttons.
+
+## Rapid fire
+
+**60 seconds** to burst as many balloons as you can, with up to three arrows in the air at once. Your record is kept.
 
 ## Statistics
 
-The **Records** panel keeps your best round, the number of rounds played and the number of arrows right in the centre (bullseyes).
+The **Records** panel keeps your stars, events cleared, bullseyes and rapid-fire record. The **Fullscreen** button is at the top right of the game.
 
 ## Data and sync
 

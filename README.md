@@ -1,6 +1,6 @@
 # Archer
 
-Un jeu de tir à l'arc : dix flèches par manche, une cible qui s'éloigne puis se met à bouger, et un vent qui change à chaque tir. Dose la force, vise en tenant compte du vent et cherche la meilleure manche sur 100 points.
+Un jeu de tir à l'arc en pixel art : un tournoi de 12 épreuves dans des lieux différents, avec cibles, ballons et plateaux, du vent, et jusqu'à 3 étoiles par épreuve. Plus un tir rapide de 60 secondes.
 
 *English version: [README.en.md](README.en.md)*
 
@@ -14,16 +14,27 @@ Un jeu de tir à l'arc : dix flèches par manche, une cible qui s'éloigne puis 
 
 La **manche à air** indique la direction et la force du vent pour le tir en cours. Il change à chaque flèche : un vent de face raccourcit le tir, un vent de côté le dévie. Vise un peu plus haut ou à contre-vent pour compenser.
 
-## Une manche
+## Le tournoi
 
-- Une manche compte **10 flèches**.
-- Le centre de la cible rapporte **10 points**, l'anneau extérieur **1 point** ; une flèche hors de la cible est ratée.
-- La cible **recule toutes les trois flèches**, puis, en fin de manche, elle **se déplace** : il faut anticiper sa position.
-- À la fin, le total sur 100 s'affiche ; un clic lance une nouvelle manche.
+- **12 épreuves** dans des lieux différents : pré, verger, forêt, château, plage, de nuit, falaises. Chacune a son nombre de flèches, son vent et ses cibles.
+- **Les cibles** : le centre rapporte **10 points**, l'anneau extérieur **1 point**. Certaines bougent.
+- **Les ballons** (5 points) et **les plateaux d'argile** (8 points) se crèvent au passage : la flèche continue et peut en toucher plusieurs.
+- Chaque épreuve donne **1 à 3 étoiles** selon les points (les trois paliers sont affichés en haut). Une épreuve s'ouvre quand la précédente a au moins une étoile.
+- Au début, la caméra va montrer la cible puis revient (un clic pour passer). Une flèche indique les cibles hors de l'écran et leur distance.
+
+## Le spectacle
+
+- La **caméra suit la flèche** et **ralentit** quand elle approche d'une cible.
+- Une **loupe** montre la cible de face et le trou de la flèche. Un tir « **dans le mille** » a droit à sa fanfare.
+- À la fin, un **bilan** : les points, les étoiles, et les boutons Rejouer, Suivante et Menu.
+
+## Le tir rapide
+
+**60 secondes** pour crever le plus de ballons possible, avec jusqu'à trois flèches en l'air à la fois. Ton record est gardé.
 
 ## Statistiques
 
-Le panneau **Records** garde ta meilleure manche, le nombre de manches jouées et le nombre de flèches plantées en plein centre (« dans le mille »).
+Le panneau **Records** garde tes étoiles, les épreuves réussies, les flèches « dans le mille » et ton record de tir rapide. Le bouton **Plein écran** est en haut à droite du jeu.
 
 ## Données et synchronisation
 
