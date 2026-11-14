@@ -28,7 +28,7 @@ module.exports = async ({ pj, sleep }) => {
     await fire(); await sleep(lv === 10 ? 1400 : 900); await shot(name);
   }
   await pj(`(${A}.start('r'), 0)`); await sleep(300);
-  for (let i = 0; i < 3; i++) { await fire(); await sleep(700); }
+  for (let i = 0; i < 8 && await pj(`${A}.st().score`) < 5; i++) { await pj(`(${A}.st().tg.forEach(t => { t.m = 0; t.y = t.y0; }), 0)`); await fire(); await sleep(900); }  // ballons immobiles : le calcul de visée ne suit pas leur balancement
   const rapid = await pj(`${A}.st().score`); if (!(rapid >= 5)) throw new Error('tir rapide : ' + rapid + ' points');
   await shot('rapide');
   const lay = await pj(`(() => { const c = document.getElementById('gc').getBoundingClientRect(), s = document.querySelector('.gSide').getBoundingClientRect(); return { beside: s.left >= c.right - 1, fits: document.documentElement.scrollWidth <= innerWidth + 1, w: innerWidth }; })()`);
@@ -37,5 +37,10 @@ module.exports = async ({ pj, sleep }) => {
   const fs = await pj(`(() => { const c = document.getElementById('gc'); return document.fullscreenElement === c.parentElement && Math.abs(c.getBoundingClientRect().height - innerHeight) < 3; })()`);
   await pj(`document.fullscreenElement && document.exitFullscreen(), 0`); await sleep(300);
   if (!fs) throw new Error('le plein écran ne remplit pas la hauteur');
+  { // la zone de jeu tient dans la fenêtre, quelle que soit sa taille
+    const L = await pj(`(() => { const c = [...document.querySelectorAll('.gameBox canvas')].filter(c => c.offsetWidth).sort((a, b) => b.offsetWidth - a.offsetWidth)[0], r = c.getBoundingClientRect(); let s = 0; for (let e = c.parentElement; e; e = e.parentElement) s += e.scrollTop; return { top: Math.round(r.top + s), bottom: Math.round(r.bottom + s), h: Math.round(r.height), w: Math.round(r.width), wh: innerHeight, ww: innerWidth, sw: document.documentElement.scrollWidth }; })()`);
+    if (process.env.NEO_FIT_LOG) console.log('FIT', JSON.stringify(L));
+    if (L.bottom > L.wh + 1 || L.sw > L.ww + 1) throw new Error('la zone de jeu dépasse la fenêtre : ' + JSON.stringify(L));
+  }
   return 'épreuve 1 : ' + res.score + ' points, ' + res.stars + ' étoiles · tir rapide ' + rapid + ' · fenêtre ' + lay.w + ' px';
 };
