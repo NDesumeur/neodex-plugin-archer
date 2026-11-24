@@ -27,6 +27,19 @@ module.exports = async ({ pj, sleep }) => {
     await pj(`(() => { ${A}.start(${lv - 1}); const a = ${A}.st(); a.st = 'aim'; a.cam = 0; return 0; })()`); await sleep(400);
     await fire(); await sleep(lv === 10 ? 1400 : 900); await shot(name);
   }
+  // 1.2.0 : la fendante, les cerfs-volants, le chariot, l'atelier de l'arc, le tournoi de saison
+  await pj(`(() => { ${A}.start(12); const a = ${A}.st(); a.st = 'aim'; a.cam = 0; return 0; })()`); await sleep(300);
+  await ptr('pointerdown', 96 + 164 + 30, 258); await sleep(100);
+  if (await pj(`${A}.st().kind`) !== 'f') throw new Error('le bouton FENDANTE devait choisir la flèche');
+  await shot('choix');
+  await ptr('pointerdown', 300, 150); await ptr('pointermove', 300 - 50, 150 + 34); await ptr('pointerup', 300 - 50, 150 + 34);
+  for (let k = 0; k < 30 && await pj(`${A}.st().arrows.length`) < 3; k++) await sleep(50);
+  if (await pj(`${A}.st().arrows.length`) < 3) throw new Error('la fendante devait se séparer en trois'); await shot('fendante');
+  await pj(`(() => { ${A}.start(13); const a = ${A}.st(); a.st = 'aim'; a.cam = 0; return 0; })()`); await sleep(300); await fire(); await sleep(900); await shot('chariot');
+  await pj(`(() => { ${A}.menu(); ${A}.st().st = 'bow'; return 0; })()`); await sleep(300); await shot('arc');
+  await pj(`(() => { ${A}.menu(); ${A}.tour(); for (let i = 0; i < 3; i++) { const a = ${A}.st(); a.score = 30 + i * 5; ${A}.end(); if (i < 2) ${A}.start(a.tour.lvs[a.tour.i]); } return 0; })()`); await sleep(1000);
+  const rank = await pj(`${A}.st().tour.rank`); if (!(rank >= 1 && rank <= 8)) throw new Error('classement de saison : ' + rank); await shot('saison');
+  await pj(`(${A}.menu(), 0)`); await sleep(300); await shot('menu2');
   await pj(`(${A}.start('r'), 0)`); await sleep(300);
   for (let i = 0; i < 8 && await pj(`${A}.st().score`) < 5; i++) { await pj(`(${A}.st().tg.forEach(t => { t.m = 0; t.y = t.y0; }), 0)`); await fire(); await sleep(900); }  // ballons immobiles : le calcul de visée ne suit pas leur balancement
   const rapid = await pj(`${A}.st().score`); if (!(rapid >= 5)) throw new Error('tir rapide : ' + rapid + ' points');
@@ -42,5 +55,5 @@ module.exports = async ({ pj, sleep }) => {
     if (process.env.NEO_FIT_LOG) console.log('FIT', JSON.stringify(L));
     if (L.bottom > L.wh + 1 || L.sw > L.ww + 1) throw new Error('la zone de jeu dépasse la fenêtre : ' + JSON.stringify(L));
   }
-  return 'épreuve 1 : ' + res.score + ' points, ' + res.stars + ' étoiles · tir rapide ' + rapid + ' · fenêtre ' + lay.w + ' px';
+  return 'fendante · chariot · arc · saison ' + rank + 'e · épreuve 1 : ' + res.score + ' points, ' + res.stars + ' étoiles · tir rapide ' + rapid + ' · fenêtre ' + lay.w + ' px';
 };

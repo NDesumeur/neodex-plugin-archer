@@ -1,8 +1,15 @@
 # Archer
 
-A pixel art archery game: a tournament of 12 events in different places, with targets, balloons and clay discs, wind, and up to 3 stars per event. Plus a 60-second rapid fire.
+A pixel art archery game: a tournament of 15 events in different places, with targets, balloons and clay discs, wind, and up to 3 stars per event. Plus a 60-second rapid fire.
 
 *Version française : [README.md](README.md)*
+
+## Special arrows, moving targets, bow and season (new in 1.2.0)
+
+- **Three arrows**, chosen before each shot (buttons under the archer, or keys 1, 2, 3): the **normal** one, unlimited; the **heavy** one (dark tip, yellow fletching), pushed six times less by the wind but falling a little faster; the **splitting** one (blue fletching), which splits into three at the top of its flight, great for balloons and kites. Each event gives one heavy and one splitting arrow; the quiver adds more.
+- **Moving targets**: **kites** tacking in the wind (12 points), and a target on a **cart** rolling from side to side. Three more events: **Kites**, **The market cart** and **The grand final** (15 events in all).
+- **A bow to upgrade**: points you win become **coins**. In the workshop (THE BOW button in the menu): **power** (+4 % speed per level), **sight** (longer aiming dots) and **quiver** (+1 heavy and +1 splitting per event).
+- **The season tournament** (SEASON button): every month, three events drawn at random, played in a row, against seven archers whose scores are set for the whole month. At the end, the **ranking** out of 8; the side column keeps your best place of the month and your number of podiums.
 
 ## How to shoot
 

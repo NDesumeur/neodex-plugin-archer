@@ -1,9 +1,9 @@
 {
   "id": "neodex.archer",
   "name": "Archer",
-  "version": "1.1.2",
+  "version": "1.2.0",
   "author": "NDesumeur",
-  "description": "Jeu de tir à l'arc en pixel art : maintiens le clic et tire la souris en arrière pour viser et doser la force, puis lâche. Un tournoi de 12 épreuves dans des lieux différents (pré, verger, forêt, château, plage, nuit, falaises), avec cibles, ballons et plateaux, du vent, et 1 à 3 étoiles par épreuve. La caméra suit la flèche, une loupe montre l'impact. Et un tir rapide de 60 secondes.",
+  "description": "Jeu de tir à l'arc en pixel art : maintiens le clic et tire la souris en arrière pour viser et doser la force, puis lâche. Un tournoi de 15 épreuves dans des lieux différents (pré, verger, forêt, château, plage, nuit, falaises), avec cibles, ballons et plateaux, du vent, et 1 à 3 étoiles par épreuve. La caméra suit la flèche, une loupe montre l'impact. Et un tir rapide de 60 secondes. Nouveau : flèches lourde (contre le vent) et fendante (trois flèches au sommet), cerfs-volants et chariot qui bougent, trois épreuves de plus, un arc à améliorer avec tes points (puissance, viseur, carquois) et un tournoi de saison chaque mois contre sept archers, avec son classement.",
   "icon": "icon.png",
   "entry": "index.js",
   "view": "archer",

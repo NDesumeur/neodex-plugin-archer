@@ -1,13 +1,13 @@
 // Archer : Dix flèches, une cible de plus en plus loin et un vent qui change. Tire en arrière pour bander l'arc, lâche pour tirer.
 // Jeu NeoDex en pixel art dessiné à la main (police bitmap, cadres et boutons en pixels). Il tourne dans le bac à sable de NeoDex.
 const HTML = `<div class="appWrap wide">
-  <div class="agHead"><span class="label">Archer</span><span class="hint">Clic maintenu et tirer en arrière : viser et doser · lâcher : tirer</span></div>
+  <div class="agHead"><span class="label">Archer</span><span class="hint">Clic maintenu et tirer en arrière : viser et doser · lâcher : tirer · 1 2 3 : flèche normale, lourde, fendante</span></div>
   <div class="gMain"><div class="gameBox"><canvas id="gc" width="480" height="270" role="img" aria-label="Archer"></canvas><button class="btn gFs" id="gFs">PLEIN ÉCRAN</button></div>
     <div class="gSide">
       <div class="sysCard"><b>RECORDS</b><div class="gStats" id="gStats"></div></div>
       <div class="row"><button class="btn main" id="gNew">ÉPREUVES</button></div>
       
-      <div class="hint">Un tournoi de 12 épreuves : chacune s’ouvre quand la précédente a au moins une étoile. La manche à air montre le vent, qui pousse la flèche pendant tout son vol ; les pointillés montrent le début du tir, sans le vent. Les ballons et les plateaux se crèvent au passage, la flèche continue. Le tir rapide : 60 secondes pour crever le plus de ballons.</div>
+      <div class="hint">Trois flèches : la normale ; la lourde, que le vent pousse à peine ; la fendante, qui se sépare en trois au sommet de sa course. Chaque épreuve donne une lourde et une fendante (plus avec le carquois). Les points gagnés deviennent des pièces pour améliorer l’arc (puissance, viseur, carquois). Chaque mois, un tournoi de saison : trois épreuves d’affilée contre sept archers, et un classement.</div><div class="hint">Un tournoi de 15 épreuves : chacune s’ouvre quand la précédente a au moins une étoile. La manche à air montre le vent, qui pousse la flèche pendant tout son vol ; les pointillés montrent le début du tir, sans le vent. Les ballons et les plateaux se crèvent au passage, la flèche continue. Le tir rapide : 60 secondes pour crever le plus de ballons.</div>
     </div></div>
 </div>`;
 const CSS = `.gMain{display:flex;gap:18px;align-items:flex-start}
@@ -360,33 +360,55 @@ const AR_LV = [
   ['Au bord du vide', 'falaise', 6, 1.2, [{k: 'c', x: 620, h: 30}], [10, 22, 36]],
   ['La fête de nuit', 'nuit', 8, .8, [{k: 'c', x: 450, h: 34}, {k: 'b', x: 300, h: 80}, {k: 'b', x: 380, h: 120}, {k: 'b', x: 560, h: 90}, {k: 'b', x: 620, h: 140}], [20, 35, 50]],
   ['Le grand tournoi', 'chateau', 10, 1.5, [{k: 'c', x: 720, h: 36, m: 26}], [30, 55, 80]],
+  ['Cerfs-volants', 'plage', 8, .9, [{k: 'k', x: 300, h: 150, m: 70}, {k: 'k', x: 430, h: 175, m: 90}, {k: 'k', x: 540, h: 130, m: 60}, {k: 'k', x: 380, h: 120, m: 50}], [12, 24, 36]],
+  ['Le chariot du marché', 'verger', 6, .6, [{k: 'c', x: 400, h: 34, mx: 70, cart: true}], [12, 24, 38]],
+  ['La grande finale', 'falaise', 10, 1.3, [{k: 'c', x: 600, h: 34, mx: 50, cart: true}, {k: 'k', x: 360, h: 160, m: 80}, {k: 'k', x: 480, h: 140, m: 70}, {k: 'b', x: 300, h: 90}, {k: 'b', x: 420, h: 110}], [30, 50, 70]],
 ];
-const AR_PTS = {b: 5, p: 8}, AR_RAPID = 60 * 60;
-const ars = gstore('archer', {rounds: 0, bulls: 0}); ars.stars ??= {}; ars.rapid ??= 0;
+// l'arc à améliorer avec les pièces (les points gagnés) : nom, clé, niveau max, prix, ce que ça fait
+const AR_BOW = [['Puissance', 'pow', 3, [60, 150, 300], 'flèches plus rapides : +4 % par niveau'], ['Viseur', 'eye', 3, [40, 100, 200], 'pointillés de visée plus longs'], ['Carquois', 'quiv', 2, [80, 200], '+1 lourde et +1 fendante par épreuve']];
+const AR_KIND = {n: 'NORMALE', l: 'LOURDE', f: 'FENDANTE'};
+// le tournoi de saison : un par mois, trois épreuves tirées au sort, sept archers en face
+const AR_RIVALS = ['Aube', 'Brin', 'Corentin', 'Dalia', 'Elouan', 'Fanny', 'Gaspard', 'Hortense', 'Ilian', 'Jade', 'Kilian', 'Maëlle'];
+const arSeason = () => { const d = new Date(); return d.getFullYear() * 12 + d.getMonth(); };
+const AR_PTS = {b: 5, p: 8, k: 12}, AR_RAPID = 60 * 60;
+const ars = gstore('archer', {rounds: 0, bulls: 0}); ars.stars ??= {}; ars.rapid ??= 0; ars.gold ??= 0; ars.bow ??= {pow: 0, eye: 0, quiv: 0}; ars.season ??= {id: 0, best: 0}; ars.podiums ??= 0;
+const arV = () => AR.V * (1 + .04 * ars.bow.pow);
+function arBuy(i) {  // acheter un niveau de l'arc
+  const [, k, max, cost] = AR_BOW[i], lv = ars.bow[k]; if (lv >= max || ars.gold < cost[lv]) return false;
+  ars.gold -= cost[lv]; ars.bow = {...ars.bow, [k]: lv + 1}; saveGames(); arInfo(); beep(880, .1, 'triangle', 1320, .07); return true;
+}
+function arTour() {  // le tournoi de saison : les mêmes épreuves et les mêmes rivaux pour tout le mois
+  const id = arSeason(), r = seeded(id * 97 + 13), lvs = [0, 1, 2].map(() => Math.floor(r() * AR_LV.length)), names = [...AR_RIVALS];
+  for (let i = names.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [names[i], names[j]] = [names[j], names[i]]; }
+  const rivals = names.slice(0, 7).map(n => ({n, s: lvs.reduce((a, lv) => a + Math.round(AR_LV[lv][5][1] * (.55 + r() * .75)), 0)}));
+  ar = ar || {tick: 0, raf: 0}; ar.tour = {id, lvs, i: 0, total: 0, rivals}; arStart(lvs[0]);
+}
+const arRank = t => 1 + t.rivals.filter(r => r.s > t.total).length;
 const arStarsOf = (lv, score) => AR_LV[lv][5].filter(s => score >= s).length;
 const arOpen = lv => lv === 0 || (ars.stars[lv - 1] || 0) > 0;
 let ar = null;
 const arWind = () => ar.lv === 'r' ? 0 : Math.round((Math.random() * 2 - 1) * AR_LV[ar.lv][3] * 10) / 10;
-function arTargets(list) { return list.map(t => ({...t, x0: t.x, y0: AR.GY - t.h, y: AR.GY - t.h, m: t.m || (t.k === 'b' ? 4 : 0), sp: .02 + Math.random() * .015, ph: Math.random() * 6, alive: true})); }
+function arTargets(list) { return list.map(t => ({...t, mx: t.mx || 0, x0: t.x, y0: AR.GY - t.h, y: AR.GY - t.h, m: t.m || (t.k === 'b' ? 4 : 0), sp: .02 + Math.random() * .015, ph: Math.random() * 6, alive: true})); }
 function arStart(lv) {
   const rapid = lv === 'r', L = rapid ? null : AR_LV[lv];
-  ar = Object.assign(ar || {tick: 0, raf: 0}, {mode: 'play', st: rapid ? 'aim' : 'intro', lv, place: rapid ? 'verger' : L[1], n: 0, score: 0, arrows: [], stuck: [], parts: [], pops: [], cam: 0, shake: 0, loupe: null, banner: null, aim: null, start: null, rel: 0, t0: ar?.tick || 0, time: AR_RAPID, btns: []});
-  ar.tg = rapid ? [] : arTargets(L[4]); ar.worldW = rapid ? W : Math.max(W, ...ar.tg.map(t => t.x0 + (t.k === 'p' ? t.m : 0) + 90)); ar.wind = arWind();
+  ar = Object.assign(ar || {tick: 0, raf: 0}, {mode: 'play', st: rapid ? 'aim' : 'intro', lv, place: rapid ? 'verger' : L[1], n: 0, score: 0, arrows: [], stuck: [], parts: [], pops: [], cam: 0, shake: 0, loupe: null, banner: null, aim: null, start: null, rel: 0, t0: ar?.tick || 0, time: AR_RAPID, btns: [], kind: 'n', quiver: rapid ? {l: 0, f: 0} : {l: 1 + ars.bow.quiv, f: 1 + ars.bow.quiv}});
+  ar.tg = rapid ? [] : arTargets(L[4]); ar.worldW = rapid ? W : Math.max(W, ...ar.tg.map(t => t.x0 + (t.k === 'p' || t.k === 'k' ? t.m : 0) + t.mx + 90)); ar.wind = arWind();
   if (rapid) for (let i = 0; i < 6; i++) arBalloon();
   arInfo();
 }
-const arMenu = () => { ar = Object.assign(ar || {tick: 0, raf: 0}, {mode: 'play', st: 'menu', place: 'pre', cam: 0, tg: [], arrows: [], stuck: [], parts: [], pops: [], shake: 0, loupe: null, banner: null, btns: []}); arInfo(); };
+const arMenu = () => { ar = Object.assign(ar || {tick: 0, raf: 0}, {tour: null, mode: 'play', st: 'menu', place: 'pre', cam: 0, tg: [], arrows: [], stuck: [], parts: [], pops: [], shake: 0, loupe: null, banner: null, btns: []}); arInfo(); };
 function arBalloon() { const h = 40 + Math.random() * 140; ar.tg.push(...arTargets([{k: 'b', x: 170 + Math.random() * 280, h}])); }
 function arShoot(dx, dy) {
   const p = Math.min(1, Math.hypot(dx, dy) / 70), a = Math.atan2(dy, dx); if (p < .1) return;
-  const [hx, hy] = arHand(a, p);
-  ar.arrows.push({x: hx, y: hy, vx: Math.cos(a) * p * AR.V, vy: Math.sin(a) * p * AR.V, pts: 0, trail: []}); ar.rel = 12; beep(300, .08, 'triangle', 900, .07);
+  const [hx, hy] = arHand(a, p); let kind = ar.kind || 'n';
+  if (kind !== 'n' && ar.quiver?.[kind] > 0) ar.quiver[kind]--; else kind = 'n'; ar.kind = 'n';
+  ar.arrows.push({x: hx, y: hy, vx: Math.cos(a) * p * arV(), vy: Math.sin(a) * p * arV(), pts: 0, trail: [], kind}); ar.rel = 12; beep(300, .08, 'triangle', 900, .07);
   if (ar.lv !== 'r') { ar.n++; ar.st = 'fly'; }
 }
 // une flèche avance (deux demi-pas) : touche une cible (elle s'y plante), crève les ballons et brise les plateaux au passage (elle continue)
 function arAdvance(a, tgs, wind, dt, wW) {
   for (let s = 0; s < 2; s++) {
-    a.vy += AR.G / 2 * dt; a.vx += wind * .004 * dt; a.x += a.vx / 2 * dt; a.y += a.vy / 2 * dt;
+    a.vy += AR.G / 2 * dt * (a.kind === 'l' ? 1.15 : 1); a.vx += wind * .004 * dt * (a.kind === 'l' ? .15 : 1); a.x += a.vx / 2 * dt; a.y += a.vy / 2 * dt;
     for (const t of tgs) {
       if (!t.alive) continue;
       if (t.k === 'c' && a.x >= t.x - 2 && a.x <= t.x + 4 && Math.abs(a.y - t.y) <= 20) { const dy = a.y - t.y, pts = Math.max(1, 10 - Math.floor(Math.abs(dy) / 2)); a.pts += pts; return {end: 'c', t, dy, pts}; }
@@ -400,8 +422,10 @@ function arAdvance(a, tgs, wind, dt, wW) {
 const arHand = (a, p) => { const sx = AR.AX + 3, sy = AR.GY - 25; return [sx + Math.cos(a) * 10, sy + Math.sin(a) * 10]; };
 function arPart(x, y, n, cols, sp = 1.5) { for (let i = 0; i < n; i++) ar.parts.push({x, y, vx: (Math.random() - .5) * 2 * sp, vy: -Math.random() * 2 * sp, c: cols[i % cols.length], life: 40 + Math.random() * 30}); }
 function arUpdate() {
-  if (ar.st === 'menu') return;
-  for (const t of ar.tg) if (t.alive) { if (t.k === 'p') { t.x = t.x0 + Math.sin(ar.tick * t.sp + t.ph) * t.m; t.y = t.y0 + Math.cos(ar.tick * t.sp * 2 + t.ph) * 6; } else { t.y = t.y0 + Math.sin(ar.tick * t.sp + t.ph) * t.m; } }
+  if (ar.st === 'menu' || ar.st === 'bow') return;
+  for (const t of ar.tg) if (t.alive) { if (t.mx) t.x = t.x0 + Math.sin(ar.tick * t.sp * .5 + t.ph) * t.mx;  // le chariot roule
+    if (t.k === 'k') { t.x = t.x0 + Math.sin(ar.tick * t.sp * .6 + t.ph) * t.m; t.y = t.y0 + Math.sin(ar.tick * t.sp * 1.7 + t.ph) * 14; continue; }  // le cerf-volant louvoie
+    if (t.k === 'p') { t.x = t.x0 + Math.sin(ar.tick * t.sp + t.ph) * t.m; t.y = t.y0 + Math.cos(ar.tick * t.sp * 2 + t.ph) * 6; } else { t.y = t.y0 + Math.sin(ar.tick * t.sp + t.ph) * t.m; } }
   for (const p of ar.parts) { p.x += p.vx; p.y += p.vy; p.vy += .12; p.life--; if (p.y > AR.GY) { p.y = AR.GY; p.vx *= .6; p.vy = 0; } } ar.parts = ar.parts.filter(p => p.life > 0);
   for (const p of ar.pops) p.t++; ar.pops = ar.pops.filter(p => p.t < 60);
   if (ar.shake) ar.shake--; if (ar.rel) ar.rel--;
@@ -416,8 +440,9 @@ function arUpdate() {
   const slow = ar.lv !== 'r' && ar.arrows.some(a => ar.tg.some(t => t.alive && t.x - a.x > -4 && t.x - a.x < 46 && Math.abs(t.y - a.y) < 34 && a.vx > 0));
   for (const a of [...ar.arrows]) {
     a.trail.push([a.x, a.y]); if (a.trail.length > 14) a.trail.shift();
+    if (a.kind === 'f' && !a.split && a.vy >= 0) { a.split = true; for (const d of [-1, 1]) ar.arrows.push({...a, trail: [], pts: 0, vy: a.vy + d * 1.1, vx: a.vx * (1 - d * .05)}); arPart(a.x, a.y, 6, ['#ffffff', '#c8c8d8'], .6); beep(1400, .06, 'triangle', 700, .05); }
     const r = arAdvance(a, ar.tg, ar.wind, slow ? .3 : 1, ar.worldW); if (!r) continue;
-    if (r.pop) { const t = r.pop; arPart(t.x, t.y, 14, t.k === 'b' ? ['#ff4a5a', '#ffffff', '#ff9aa0'] : ['#ff8a3a', '#c05a2a', '#ffd0a0'], 1.4); ar.pops.push({x: t.x, y: t.y - 10, text: '+' + AR_PTS[t.k], t: 0}); ar.score += AR_PTS[t.k]; ar.shake = 3; beep(t.k === 'b' ? 900 : 500, .08, 'square', t.k === 'b' ? 200 : 0, .07); continue; }
+    if (r.pop) { const t = r.pop; arPart(t.x, t.y, 14, t.k === 'b' ? ['#ff4a5a', '#ffffff', '#ff9aa0'] : t.k === 'k' ? ['#3f8aff', '#ffd84a', '#ffffff'] : ['#ff8a3a', '#c05a2a', '#ffd0a0'], 1.4); ar.pops.push({x: t.x, y: t.y - 10, text: '+' + AR_PTS[t.k], t: 0}); ar.score += AR_PTS[t.k]; ar.shake = 3; beep(t.k === 'b' ? 900 : 500, .08, 'square', t.k === 'b' ? 200 : 0, .07); continue; }
     ar.arrows.splice(ar.arrows.indexOf(a), 1);
     if (r.end === 'c') {
       ar.score += r.pts; ar.stuck.push({t: r.t, dy: r.dy, a: Math.atan2(a.vy, a.vx)}); ar.loupe = {dy: r.dy, dx: (Math.random() - .5) * 8, pts: r.pts, t: ar.tick};
@@ -425,7 +450,7 @@ function arUpdate() {
       ar.pops.push({x: r.t.x, y: r.t.y - 26, text: '+' + r.pts, t: 0});
       if (r.pts === 10) { ars.bulls++; ar.banner = {text: 'DANS LE MILLE !', t: ar.tick}; [660, 880, 1100, 1320].forEach((f, i) => setTimeout(() => beep(f, .12, 'square', 0, .07), i * 90)); } else beep(r.pts >= 7 ? 1000 : 600, .1, 'square', 0, .07);
     } else { if (r.end === 'g') ar.stuck.push({x: a.x, y: AR.GY, a: Math.atan2(a.vy, a.vx)}); if (!a.pts) ar.pops.push({x: Math.min(a.x, ar.worldW - 20), y: AR.GY - 20, text: 'raté', t: 0}); beep(150, .1, 'square', 0, .05); }
-    if (ar.lv !== 'r') { ar.st = 'land'; ar.landT = ar.tick; }
+    if (ar.lv !== 'r' && !ar.arrows.length) { ar.st = 'land'; ar.landT = ar.tick; }
   }
   if (ar.lv === 'r') return;
   if (ar.st === 'fly' && ar.arrows[0]) ar.cam += (Math.max(0, Math.min(camMax, ar.arrows[0].x - W * .45)) - ar.cam) * .12;
@@ -433,7 +458,8 @@ function arUpdate() {
   if (ar.st === 'back') { ar.cam += (0 - ar.cam) * .1; if (ar.cam < 1) { ar.cam = 0; if (ar.n >= AR_LV[ar.lv][2] || !ar.tg.some(t => t.alive)) arEnd(); else { ar.st = 'aim'; ar.wind = arWind(); } } }
 }
 function arEnd() {
-  ar.st = 'done'; ar.endAt = ar.tick; ars.rounds++;
+  ar.st = 'done'; ar.endAt = ar.tick; ars.rounds++; ars.gold += ar.score;
+  if (ar.tour && ar.lv !== 'r') { const t = ar.tour; t.total += ar.score; t.i++; if (t.i >= t.lvs.length) { t.rank = arRank(t); if (ars.season.id !== t.id || t.rank < ars.season.best) ars.season = {id: t.id, best: t.rank}; if (t.rank <= 3) ars.podiums++; } }
   if (ar.lv === 'r') { ar.newBest = ar.score > ars.rapid; ars.rapid = Math.max(ars.rapid, ar.score); best('archerRapide', ar.score); }
   else { ar.stars = arStarsOf(ar.lv, ar.score); ar.newBest = ar.stars > (ars.stars[ar.lv] || 0); if (ar.newBest) ars.stars = {...ars.stars, [ar.lv]: ar.stars}; best('archer' + ar.lv, ar.score); }
   saveGames(); arInfo();
@@ -487,11 +513,21 @@ function arArcher(x, aim) {  // l'archer, 44 pixels : capuche, carquois, et les 
   line(K, x - 1, G - 25 + bob, nkx, nky, 2); line('#ffd8a8', x, G - 25 + bob, nkx, nky);  // le bras qui tire la corde
   if (aim || (ar.st === 'aim' && !ar.rel)) arArrow(nkx + dx * 17, nky + dy * 17, a);
 }
-function arArrow(x, y, a) { for (let i = 0; i < 17; i++) px(g, i < 3 ? '#c8c8d8' : '#a07040', x - Math.cos(a) * i, y - Math.sin(a) * i, 1, 1); px(g, '#ff4a5a', x - Math.cos(a) * 15, y - Math.sin(a) * 15 - 1, 2, 3); }
+function arArrow(x, y, a, kind) { for (let i = 0; i < 17; i++) px(g, i < 3 ? (kind === 'l' ? '#5a5a6a' : '#c8c8d8') : '#a07040', x - Math.cos(a) * i, y - Math.sin(a) * i, kind === 'l' && i < 4 ? 2 : 1, 1); px(g, kind === 'f' ? '#3f8aff' : kind === 'l' ? '#ffd84a' : '#ff4a5a', x - Math.cos(a) * 15, y - Math.sin(a) * 15 - 1, 2, 3); }
 function arTarget(t, X) {
   const Y = Math.round(t.y);
-  if (t.k === 'c') {  // la cible de paille sur son trépied
-    line('#5a3a1a', X + 1, Y + 8, X - 6, AR.GY, 2); line('#5a3a1a', X + 2, Y + 8, X + 9, AR.GY, 2); line('#3a2410', X + 1, Y + 8, X + 1, AR.GY);
+  if (t.k === 'k') {  // un cerf-volant en losange, sa queue à nœuds qui ondule
+    for (let j = 0; j < 20; j++) { const tx = X - j * .6 + Math.sin(ar.tick / 8 + j / 3) * 2; px(g, '#e8e0d0', tx, Y + 10 + j, 1, 1); if (j % 6 === 5) px(g, '#ff4a5a', tx - 1, Y + 10 + j, 3, 2); }
+    for (let dy = -10; dy <= 10; dy++) { const w = Math.round((10 - Math.abs(dy)) * .7); px(g, '#05010b', X - w - 1, Y + dy, 2 * w + 3, 1); px(g, dy < 0 ? '#3f8aff' : '#ffd84a', X - w, Y + dy, w + 1, 1); px(g, dy < 0 ? '#ffd84a' : '#3f8aff', X + 1, Y + dy, w, 1); }
+    px(g, '#5a3a1a', X, Y - 9, 1, 19); px(g, '#5a3a1a', X - 6, Y - 2, 13, 1);
+    return;
+  }
+  if (t.k === 'c') {  // la cible de paille sur son trépied, ou sur son chariot qui roule
+    if (t.cart) { const wy = AR.GY - 5, rot = Math.floor(t.x / 3) % 4;
+      px(g, '#05010b', X - 13, Y + 18, 30, 12); px(g, '#a0602a', X - 12, Y + 19, 28, 10); px(g, '#c88040', X - 12, Y + 19, 28, 2); for (let i = 0; i < 4; i++) px(g, '#7a4420', X - 9 + i * 7, Y + 21, 1, 8);
+      for (const wx of [X - 7, X + 11]) { px(g, '#05010b', wx - 4, wy - 4, 9, 9); px(g, '#7a4420', wx - 3, wy - 3, 7, 7); px(g, '#c88040', wx - 1 + [0, 1, 0, -1][rot], wy - 1 + [-1, 0, 1, 0][rot], 2, 2); px(g, '#05010b', wx, wy, 1, 1); }
+      line('#3a2410', X + 1, Y + 8, X + 1, Y + 18);
+    } else { line('#5a3a1a', X + 1, Y + 8, X - 6, AR.GY, 2); line('#5a3a1a', X + 2, Y + 8, X + 9, AR.GY, 2); line('#3a2410', X + 1, Y + 8, X + 1, AR.GY); }
     const ring = ['#ffd84a', '#ffd84a', '#ff4a5a', '#ff4a5a', '#3f8aff', '#3f8aff', '#1a1a2a', '#1a1a2a', '#f0f0f0', '#f0f0f0'];
     px(g, '#05010b', X - 2, Y - 22, 8, 45); for (let d = -20; d <= 20; d++) { const c = ring[Math.min(9, Math.floor(Math.abs(d) / 2))]; px(g, c, X - 1, Y + d, 4, 1); px(g, mixc(c, '#000000', .35), X + 3, Y + d, 2, 1); }
   } else if (t.k === 'b') {  // un ballon et sa ficelle
@@ -515,13 +551,13 @@ function arDraw() {
   const L = arLayers(ar.place), cam = Math.round(ar.cam), sh = ar.shake ? Math.round((Math.random() - .5) * ar.shake) : 0;
   g.save(); g.translate(sh, sh ? Math.round((Math.random() - .5) * ar.shake) : 0);
   g.drawImage(L.sky, 0, 0); g.drawImage(L.far, -Math.round(cam * .25), 0); g.drawImage(L.mid, -Math.round(cam * .55), 0); g.drawImage(L.ground, -cam, 0);
-  if (ar.st === 'menu') { g.restore(); return arDrawMenu(); }
+  if (ar.st === 'menu' || ar.st === 'bow') { g.restore(); return arDrawMenu(); }
   for (const t of ar.tg) if (t.alive) arTarget(t, Math.round(t.x - cam));
   for (const s of ar.stuck) s.t ? arArrow(s.t.x - cam + 2, s.t.y + s.dy, s.a) : arArrow(s.x - cam, s.y, s.a);
   const aiming = ar.aim && ar.st === 'aim', p = aiming ? Math.min(1, Math.hypot(ar.aim[0], ar.aim[1]) / 70) : 0, ang = aiming ? Math.atan2(ar.aim[1], ar.aim[0]) : 0;
   arArcher(AR.AX - cam, aiming ? [ang, p] : null);
-  if (aiming && p >= .1) { const [hx, hy] = arHand(ang, p); let x = hx, y = hy, vx = Math.cos(ang) * p * AR.V, vy = Math.sin(ang) * p * AR.V; for (let i = 0; i < 30; i++) { vy += AR.G; x += vx; y += vy; if (i % 2 === 0 && i < 10 + p * 14) px(g, '#ffffff', x - cam, y, 1, 1); } }  // un début de trajectoire (sans le vent)
-  for (const a of ar.arrows) { a.trail.forEach(([x, y], i) => { if (i % 2) { g.fillStyle = `rgba(255,255,255,${i / 30})`; g.fillRect(Math.round(x - cam), Math.round(y), 1, 1); } }); arArrow(a.x - cam, a.y, Math.atan2(a.vy, a.vx)); }
+  if (aiming && p >= .1) { const [hx, hy] = arHand(ang, p); let x = hx, y = hy, vx = Math.cos(ang) * p * arV(), vy = Math.sin(ang) * p * arV(); for (let i = 0; i < 60; i++) { vy += AR.G; x += vx; y += vy; if (i % 2 === 0 && i < 10 + p * 14 + ars.bow.eye * 9) px(g, i < 24 + p * 14 ? '#ffffff' : '#ffd84a', x - cam, y, 1, 1); } }  // un début de trajectoire (sans le vent)
+  for (const a of ar.arrows) { a.trail.forEach(([x, y], i) => { if (i % 2) { g.fillStyle = `rgba(255,255,255,${i / 30})`; g.fillRect(Math.round(x - cam), Math.round(y), 1, 1); } }); arArrow(a.x - cam, a.y, Math.atan2(a.vy, a.vx), a.kind); }
   for (const q of ar.parts) px(g, q.c, q.x - cam, q.y, 2, 2);
   for (const q of ar.pops) pxFont(g, q.text, q.x - cam, q.y - q.t / 3, q.text === 'raté' ? '#ffffff' : '#ffd84a', 8, 'center');
   for (const t of ar.tg) if (t.alive && t.x - cam > W - 6) { const y = Math.max(30, Math.min(AR.GY - 10, t.y)); px(g, '#05010b', W - 14, y - 4, 12, 9); for (let i = 0; i < 4; i++) px(g, '#ffd84a', W - 12 + i, y - 3 + i, 1, 7 - 2 * i); pxFont(g, Math.round((t.x - AR.AX) / 10) + ' m', W - 16, y + 3, '#ffd84a', 6, 'right'); }  // une cible plus loin
@@ -546,29 +582,62 @@ function arDraw() {
   }
   if (ar.banner) { const k = ar.tick - ar.banner.t; pxFont(g, ar.banner.text, W / 2, 80 - Math.max(0, 10 - k), k % 10 < 5 ? '#ffd84a' : '#ffffff', 16, 'center'); }
   if (ar.st === 'intro') pxFont(g, 'Clic : passer', W / 2, H - 8, '#ffffff', 6, 'center');
+  if (ar.lv !== 'r' && (ar.st === 'aim' || ar.st === 'intro')) ['n', 'l', 'f'].forEach((k, i) => {  // le choix de la flèche
+    const n = k === 'n' ? '' : ar.quiver[k], on = k === 'n' || n > 0, x = 96 + i * 82;
+    arButton(x, 250, 76, 16, (i + 1) + ' ' + AR_KIND[k] + ' ' + n, () => { if (on) ar.kind = k; }, on, ar.kind === k ? '#3fa040' : '#5a4a66'); });
+  if (ar.tour) pxFont(g, 'SAISON · ' + (ar.tour.i + (ar.st === 'done' ? 0 : 1)) + '/3 · total ' + (ar.tour.total + (ar.st === 'done' ? 0 : ar.score)), 4, 24, '#ffd84a', 6);
   if (ar.st === 'done') arDrawEnd();
   if (ar.tick % 20 === 0) cv.setAttribute('aria-label', 'Archer, ' + (ar.lv === 'r' ? 'tir rapide' : 'épreuve ' + (ar.lv + 1)) + ', ' + ar.score + ' points' + (ar.st === 'done' ? ', fini' + (ar.lv === 'r' ? '' : ', ' + ar.stars + ' étoiles') : '') + '.');
 }
+function arDrawBow() {  // l'atelier de l'arc
+  g.fillStyle = 'rgba(5,1,11,.72)'; g.fillRect(0, 0, W, H);
+  pxFont(g, 'L’ARC', W / 2, 26, '#ffd84a', 12, 'center'); pxFont(g, ars.gold + ' pièces', W / 2, 42, '#ffd84a', 8, 'center');
+  AR_BOW.forEach(([name, k, max, cost, what], i) => {
+    const y = 58 + i * 52, lv = ars.bow[k], maxed = lv >= max;
+    px(g, '#05010b', 39, y - 1, W - 78, 46); px(g, '#2a2036', 40, y, W - 80, 44);
+    pxFont(g, name, 52, y + 16, '#ffffff', 8); pxFont(g, what, 52, y + 32, '#c0b8cc', 6);
+    for (let j = 0; j < max; j++) px(g, j < lv ? '#ffd84a' : '#3a3046', 180 + j * 12, y + 8, 9, 9);
+    arButton(W - 156, y + 12, 104, 20, maxed ? 'MAX' : 'ACHETER ' + cost[lv], () => arBuy(i), !maxed && ars.gold >= cost[lv], '#3fa040');
+  });
+  arButton(W / 2 - 60, 222, 120, 22, 'RETOUR', arMenu, true, '#5a4a66');
+}
 function arDrawMenu() {
+  if (ar.st === 'bow') return arDrawBow();
   g.fillStyle = 'rgba(5,1,11,.55)'; g.fillRect(0, 0, W, H);
   pxFont(g, 'LE TOURNOI', W / 2, 24, '#ffd84a', 12, 'center');
   AR_LV.forEach((L, i) => {
-    const x = 16 + (i % 4) * 114, y = 36 + Math.floor(i / 4) * 58, open = arOpen(i), st = ars.stars[i] || 0;
-    px(g, '#05010b', x - 1, y - 1, 108, 52); px(g, open ? '#2a2036' : '#16121e', x, y, 106, 50); px(g, open ? AR_PLACES[L[1]].sky[1] : '#221c2c', x, y, 106, 4);
-    pxFont(g, String(i + 1), x + 6, y + 18, open ? '#ffd84a' : '#5a4a66', 10);
-    pxFont(g, open ? L[0] : '???', x + 53, y + 32, open ? '#ffffff' : '#5a4a66', 6, 'center');
-    for (let k = 0; k < 3; k++) arStar(x + 64 + k * 12, y + 9, k < st);
-    if (open) ar.btns.push({x, y, w: 106, h: 50, fn: () => arStart(i)});
+    const x = 12 + (i % 5) * 92, y = 34 + Math.floor(i / 5) * 56, open = arOpen(i), st = ars.stars[i] || 0;
+    px(g, '#05010b', x - 1, y - 1, 88, 52); px(g, open ? '#2a2036' : '#16121e', x, y, 86, 50); px(g, open ? AR_PLACES[L[1]].sky[1] : '#221c2c', x, y, 86, 4);
+    pxFont(g, String(i + 1), x + 5, y + 18, open ? '#ffd84a' : '#5a4a66', 10);
+    pxFont(g, open ? L[0] : '???', x + 43, y + 34, open ? '#ffffff' : '#5a4a66', 6, 'center');
+    for (let k = 0; k < 3; k++) arStar(x + 46 + k * 12, y + 9, k < st);
+    if (open) ar.btns.push({x, y, w: 86, h: 50, fn: () => { ar.tour = null; arStart(i); }});
   });
-  arButton(W / 2 - 90, 214, 180, 22, 'TIR RAPIDE · record ' + ars.rapid, () => arStart('r'), true, '#3f8aff');
+  pxFont(g, ars.gold + ' pièces', W - 12, 24, '#ffd84a', 7, 'right');
+  arButton(12, 208, 146, 22, 'TIR RAPIDE · ' + ars.rapid, () => { ar.tour = null; arStart('r'); }, true, '#3f8aff');
+  arButton(167, 208, 146, 22, 'L’ARC', () => { ar.st = 'bow'; }, true, '#3fa040');
+  arButton(322, 208, 146, 22, 'SAISON' + (ars.season.id === arSeason() ? ' · ' + ars.season.best + 'e' : ''), arTour, true, '#c0802a');
   pxFont(g, 'Une épreuve s’ouvre quand la précédente a une étoile', W / 2, 254, '#c0b8cc', 6, 'center');
   if (ar.tick % 20 === 0) cv.setAttribute('aria-label', 'Archer, le tournoi : ' + AR_LV.filter((L, i) => arOpen(i)).length + ' épreuves ouvertes.');
 }
 function arDrawEnd() {
   const k = ar.tick - ar.endAt, rapid = ar.lv === 'r'; g.fillStyle = 'rgba(5,1,11,.78)'; g.fillRect(60, 50, W - 120, 170);
+  if (ar.tour?.rank) {  // le classement de la saison
+    const t = ar.tour, rows = [...t.rivals, {n: 'Toi', s: t.total, me: true}].sort((a, b) => b.s - a.s || (a.me ? -1 : 1));
+    pxFont(g, 'TOURNOI DE SAISON · ' + t.rank + (t.rank === 1 ? 'er' : 'e') + ' / 8', W / 2, 70, t.rank <= 3 ? '#7ee07a' : '#ff8a3a', 10, 'center');
+    rows.forEach((r, i) => { const y = 86 + i * 11; pxFont(g, (i + 1) + '. ' + r.n, 150, y, r.me ? '#ffd84a' : '#ffffff', 7); pxFont(g, String(r.s), 330, y, r.me ? '#ffd84a' : '#c0b8cc', 7, 'right'); });
+    if (k < 40) return;
+    arButton(124, 186, 108, 22, 'REJOUER', arTour); arButton(248, 186, 108, 22, 'MENU', arMenu, true, '#5a4a66'); return;
+  }
+  if (ar.tour) {  // entre deux épreuves du tournoi
+    pxFont(g, 'ÉPREUVE ' + ar.tour.i + ' / 3 DE LA SAISON', W / 2, 80, '#ffd84a', 10, 'center'); pxFont(g, ar.score + ' points · total ' + ar.tour.total, W / 2, 104, '#ffffff', 8, 'center');
+    pxFont(g, 'Ensuite : ' + AR_LV[ar.tour.lvs[ar.tour.i]][0], W / 2, 126, '#c0b8cc', 7, 'center');
+    if (k < 40) return;
+    arButton(124, 170, 108, 22, 'SUIVANTE', () => arStart(ar.tour.lvs[ar.tour.i])); arButton(248, 170, 108, 22, 'ABANDON', arMenu, true, '#5a4a66'); return;
+  }
   const ok = rapid || ar.stars > 0;
   pxFont(g, rapid ? 'TEMPS ÉCOULÉ' : ok ? 'ÉPREUVE RÉUSSIE !' : 'PAS ENCORE…', W / 2, 74, ok ? '#7ee07a' : '#ff8a3a', 12, 'center');
-  pxFont(g, ar.score + ' points' + (rapid && ar.newBest ? ' · record !' : ''), W / 2, 96, '#ffd84a', 8, 'center');
+  pxFont(g, ar.score + ' points' + (rapid && ar.newBest ? ' · record !' : '') + ' · +' + ar.score + ' pièces', W / 2, 96, '#ffd84a', 8, 'center');
   if (!rapid) { for (let i = 0; i < 3; i++) arStar(W / 2 - 46 + i * 32, 106, i < ar.stars && k > 20 + i * 15, 4); AR_LV[ar.lv][5].forEach((s, i) => { for (let j = 0; j <= i; j++) arStar(W / 2 - 104 + i * 76 + j * 8, 140, true); pxFont(g, String(s), W / 2 - 100 + i * 76 + (i + 1) * 8, 147, '#c0b8cc', 6); }); }
   if (k < 40) return;
   arButton(84, 170, 96, 22, 'REJOUER', () => arStart(ar.lv));
@@ -582,9 +651,10 @@ cv.onpointerdown = e => {
   if (ar.st !== 'aim' || (ar.lv === 'r' && ar.arrows.length >= 3)) return;
   ar.start = [x, y]; ar.aim = [0, 0]; try { cv.setPointerCapture(e.pointerId); } catch {}
 };
+document.addEventListener('keydown', e => { if (!ar || !keyOk(e) || ar.lv === 'r' || !['aim', 'intro'].includes(ar.st)) return; const k = ['n', 'l', 'f']['123'.indexOf(e.key)]; if (k && (k === 'n' || ar.quiver[k] > 0)) { ar.kind = k; beep(700, .05); } });
 cv.onpointermove = e => { if (!ar?.start) return; const [x, y] = cpos(e); ar.aim = [ar.start[0] - x, ar.start[1] - y]; };
 cv.onpointerup = () => { if (!ar?.start) return; const [dx, dy] = ar.aim; ar.start = null; ar.aim = null; if (ar.st === 'aim') arShoot(dx, dy); };
-function arInfo() { const done = AR_LV.filter((L, i) => ars.stars[i]).length; showStats([['Étoiles', Object.values(ars.stars).reduce((a, b) => a + b, 0) + ' / ' + AR_LV.length * 3], ['Épreuves réussies', done + ' / ' + AR_LV.length], ['Dans le mille', ars.bulls], ['Tir rapide', ars.rapid]]); }
+function arInfo() { const done = AR_LV.filter((L, i) => ars.stars[i]).length; showStats([['Étoiles', Object.values(ars.stars).reduce((a, b) => a + b, 0) + ' / ' + AR_LV.length * 3], ['Épreuves réussies', done + ' / ' + AR_LV.length], ['Dans le mille', ars.bulls], ['Tir rapide', ars.rapid], ['Pièces', ars.gold], ['Arc', 'puissance ' + ars.bow.pow + ' · viseur ' + ars.bow.eye + ' · carquois ' + ars.bow.quiv], ['Saison', ars.season.id === arSeason() ? ars.season.best + (ars.season.best === 1 ? 'er' : 'e') + ' sur 8' : '—'], ['Podiums', ars.podiums]]); }
 $('gNew').onclick = () => { arMenu(); $('gNew').blur(); };
 $('gFs').onclick = () => { $('gFs').blur(); if (document.fullscreenElement) document.exitFullscreen(); else cv.parentElement.requestFullscreen?.().catch(() => {}); };
 // le tir qui touche le centre de la première cible encore là, sans vent (pour la vérification et le test)
@@ -592,7 +662,7 @@ function arSolve(tgs, wW, fine = true) {
   const t = tgs.find(t => t.alive && t.k === 'c') || tgs.find(t => t.alive); if (!t) return null;
   let bestS = null;
   for (let a = -1.3; a < .1; a += fine ? .005 : .012) for (let p = .3; p <= 1.001; p += fine ? .05 : .1) {
-    const [hx, hy] = arHand(a, p), ar0 = {x: hx, y: hy, vx: Math.cos(a) * p * AR.V, vy: Math.sin(a) * p * AR.V, pts: 0}, copy = [{...t}];
+    const [hx, hy] = arHand(a, p), ar0 = {x: hx, y: hy, vx: Math.cos(a) * p * arV(), vy: Math.sin(a) * p * arV(), pts: 0}, copy = [{...t}];
     let r = null; for (let i = 0; i < 600 && !r; i++) r = arAdvance(ar0, copy, 0, 1, wW);
     const err = r && (r.end === 'c' ? Math.abs(r.dy) : r.pop ? 0 : 99); if (err != null && err < 99 && (!bestS || err < bestS.err)) bestS = {a, p, err};
   }
@@ -605,9 +675,19 @@ function arSolve(tgs, wW, fine = true) {
   for (let i = 0; i < 40; i++) { const r = arAdvance(shot, two, 0, 1, W); shot.vy = 0; if (r?.end) break; }
   if (shot.pts !== 10 || two.some(t => t.alive)) bad.push('ballons : ' + shot.pts);
   if (arStarsOf(0, 35) !== 2 || arStarsOf(0, 10) !== 0) bad.push('étoiles');
+  { const shoot = (kind, wind) => { const a = {x: 60, y: 150, vx: 5, vy: -2, pts: 0, kind}; for (let i = 0; i < 400; i++) if (arAdvance(a, [], wind, 1, 2000)) break; return a.x; };
+    if (Math.abs(shoot('l', 1.5) - shoot('l', 0)) * 3 > Math.abs(shoot('n', 1.5) - shoot('n', 0))) bad.push('la lourde craint le vent'); }
+  { const kite = arTargets([{k: 'k', x: 200, h: 100, m: 0}]), a = {x: 150, y: AR.GY - 100, vx: 6, vy: 0, pts: 0}; for (let i = 0; i < 30; i++) { const r = arAdvance(a, kite, 0, 1, W); a.vy = 0; if (r) break; } if (a.pts !== 12 || kite[0].alive) bad.push('cerf-volant'); }
+  { const keepAr = ar, kg = {...ars, bow: {...ars.bow}, season: {...ars.season}};
+    ars.gold = 100; ars.bow = {pow: 0, eye: 0, quiv: 0}; if (!arBuy(0) || ars.gold !== 40 || ars.bow.pow !== 1 || arBuy(0)) bad.push('achat de l’arc');
+    ar = null; arTour(); const t = ar.tour, t2 = (ar.tour = null, arTour(), ar.tour); if (t.lvs.join() !== t2.lvs.join() || t.rivals[0].n !== t2.rivals[0].n || t.rivals.length !== 7) bad.push('saison');
+    ar.quiver = {l: 1, f: 0}; ar.kind = 'l'; ar.st = 'aim'; arShoot(40, -20); if (ar.arrows[0]?.kind !== 'l' || ar.quiver.l !== 0) bad.push('flèche lourde'); ar.kind = 'f'; ar.arrows = []; ar.st = 'aim'; arShoot(40, -20); if (ar.arrows[0]?.kind !== 'n') bad.push('fendante sans stock');
+    ar.arrows = [{x: 60, y: 150, vx: 4, vy: .2, pts: 0, trail: [], kind: 'f'}]; ar.tg = []; ar.st = 'fly'; ar.worldW = 2000; arUpdate(); if (ar.arrows.length !== 3) bad.push('la fendante ne se sépare pas');
+    t2.total = 1e6; if (arRank(t2) !== 1) bad.push('classement'); t2.total = 0; if (arRank(t2) !== 8) bad.push('classement bas');
+    ar = keepAr; Object.assign(ars, kg); }
   console.assert(!bad.length, 'archer', bad); view.dataset.selfcheck = bad.join(' | ') || 'ok';
 }
-cv.__ar = {st: () => ar, solve: () => arSolve(ar.tg.map(t => ({...t})), ar.worldW), start: arStart, menu: arMenu, open: arOpen};  // pour le test
+cv.__ar = {st: () => ar, solve: () => arSolve(ar.tg.map(t => ({...t})), ar.worldW), start: arStart, menu: arMenu, open: arOpen, tour: arTour, end: arEnd, buy: arBuy};  // pour le test
 ctx.onOpen(() => { if (!ar) arMenu(); ar.mode = 'play'; gameLoop(ar, 'archer', arUpdate, arDraw); arInfo(); });
 
 }
