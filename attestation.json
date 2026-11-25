@@ -1,9 +1,9 @@
 {
   "pluginId": "neodex.archer",
   "repo": "NDesumeur/neodex-plugin-archer",
-  "version": "1.2.0",
-  "sha256": "af03f0d330b16c4257702995e1e068f14eee844ad63fdd6018ab89f5f9777a08",
-  "approvedAt": "2026-11-24T15:56:14.521Z",
+  "version": "1.3.0",
+  "sha256": "69d219bcf08d4f570f01803076a3f83c10e988a68172c551272e3c55ebc47af4",
+  "approvedAt": "2026-11-25T17:16:39.375Z",
   "neobase": ">=4.0.0",
-  "signature": "uTogy370BN1KPtZg+X2ryVMPXto6tA9Mi2oIxxGxSVrX295RI3rZhVO0GqhVbtPK50qXhPocZWz9n3T1FH9DAQ=="
+  "signature": "spwAIr6I/LhV8EVkTm9YIudV8wxHZ8qe2kecSysjg+EnqYosj9PlHrJNnCJgS6HX+JjnnQl1bXNs6VO5xE4tAg=="
 }
