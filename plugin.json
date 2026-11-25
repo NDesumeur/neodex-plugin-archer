@@ -1,7 +1,7 @@
 {
   "id": "neodex.archer",
   "name": "Archer",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "author": "NDesumeur",
   "description": "Jeu de tir à l'arc en pixel art : maintiens le clic et tire la souris en arrière pour viser et doser la force, puis lâche. Un tournoi de 15 épreuves dans des lieux différents (pré, verger, forêt, château, plage, nuit, falaises), avec cibles, ballons et plateaux, du vent, et 1 à 3 étoiles par épreuve. La caméra suit la flèche, une loupe montre l'impact. Et un tir rapide de 60 secondes. Nouveau : flèches lourde (contre le vent) et fendante (trois flèches au sommet), cerfs-volants et chariot qui bougent, trois épreuves de plus, un arc à améliorer avec tes points (puissance, viseur, carquois) et un tournoi de saison chaque mois contre sept archers, avec son classement.",
   "icon": "icon.png",
@@ -22,5 +22,73 @@
   "sdk": "2.1.0",
   "permissions": [
     "storage"
+  ],
+  "succes": [
+    {
+      "id": "premier",
+      "nom": "Première flèche",
+      "texte": "Finir une première épreuve"
+    },
+    {
+      "id": "mille",
+      "nom": "Dans le mille !",
+      "texte": "Toucher le centre de la cible"
+    },
+    {
+      "id": "mille50",
+      "nom": "Œil d'aigle",
+      "texte": "Toucher le centre 50 fois"
+    },
+    {
+      "id": "etoiles3",
+      "nom": "Trois étoiles",
+      "texte": "Obtenir 3 étoiles à une épreuve"
+    },
+    {
+      "id": "toutes",
+      "nom": "Le tournoi",
+      "texte": "Réussir toutes les épreuves"
+    },
+    {
+      "id": "parfait",
+      "nom": "Robin des bois",
+      "texte": "Obtenir 3 étoiles à toutes les épreuves",
+      "cache": true
+    },
+    {
+      "id": "podium",
+      "nom": "Sur le podium",
+      "texte": "Finir une saison dans les trois premiers"
+    },
+    {
+      "id": "champion",
+      "nom": "Champion de la saison",
+      "texte": "Finir une saison à la première place"
+    },
+    {
+      "id": "arc",
+      "nom": "Arc de maître",
+      "texte": "Améliorer l'arc au plus haut partout"
+    }
+  ],
+  "records": [
+    {
+      "id": "rapide",
+      "nom": "Tir rapide",
+      "sens": "haut",
+      "format": "nombre"
+    },
+    {
+      "id": "etoiles",
+      "nom": "Étoiles",
+      "sens": "haut",
+      "format": "nombre"
+    },
+    {
+      "id": "centres",
+      "nom": "Centres touchés",
+      "sens": "haut",
+      "format": "nombre"
+    }
   ]
 }

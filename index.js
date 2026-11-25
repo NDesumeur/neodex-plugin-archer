@@ -301,6 +301,9 @@ export default async function (ctx) {
   const saveGames = () => { clearTimeout(gamesTimer); gamesTimer = setTimeout(() => { gamesTimer = null; folder.write('games', games).catch(() => {}); }, 500); };
   const best = (k, v) => { const b = games.best[k]; if (b == null || v > b) { games.best[k] = v; saveGames(); return true; } return false; };
   const gstore = (k, init) => (games[k] ??= init);
+  // les trophées de NeoDex (3.4.8 et plus) : succès et records déclarés dans plugin.json ; sur un NeoDex plus ancien, rien ne se passe
+  const trophy = id => { ctx.games?.unlock(id).catch(() => {}); };
+  const trophyRecord = (id, v) => { if (v != null && Number.isFinite(+v)) ctx.games?.record(id, +v).catch(() => {}); };
 function gameLoop(st, appKey, update, draw) {
   cancelAnimationFrame(st.raf);
   const STEP = 1000 / 60; let acc = 0, last = performance.now();
@@ -459,7 +462,7 @@ function arUpdate() {
 }
 function arEnd() {
   ar.st = 'done'; ar.endAt = ar.tick; ars.rounds++; ars.gold += ar.score;
-  if (ar.tour && ar.lv !== 'r') { const t = ar.tour; t.total += ar.score; t.i++; if (t.i >= t.lvs.length) { t.rank = arRank(t); if (ars.season.id !== t.id || t.rank < ars.season.best) ars.season = {id: t.id, best: t.rank}; if (t.rank <= 3) ars.podiums++; } }
+  if (ar.tour && ar.lv !== 'r') { const t = ar.tour; t.total += ar.score; t.i++; if (t.i >= t.lvs.length) { t.rank = arRank(t); if (ars.season.id !== t.id || t.rank < ars.season.best) ars.season = {id: t.id, best: t.rank}; if (t.rank <= 3) ars.podiums++; if (t.rank === 1) ars.champion = 1; } }
   if (ar.lv === 'r') { ar.newBest = ar.score > ars.rapid; ars.rapid = Math.max(ars.rapid, ar.score); best('archerRapide', ar.score); }
   else { ar.stars = arStarsOf(ar.lv, ar.score); ar.newBest = ar.stars > (ars.stars[ar.lv] || 0); if (ar.newBest) ars.stars = {...ars.stars, [ar.lv]: ar.stars}; best('archer' + ar.lv, ar.score); }
   saveGames(); arInfo();
@@ -654,7 +657,8 @@ cv.onpointerdown = e => {
 document.addEventListener('keydown', e => { if (!ar || !keyOk(e) || ar.lv === 'r' || !['aim', 'intro'].includes(ar.st)) return; const k = ['n', 'l', 'f']['123'.indexOf(e.key)]; if (k && (k === 'n' || ar.quiver[k] > 0)) { ar.kind = k; beep(700, .05); } });
 cv.onpointermove = e => { if (!ar?.start) return; const [x, y] = cpos(e); ar.aim = [ar.start[0] - x, ar.start[1] - y]; };
 cv.onpointerup = () => { if (!ar?.start) return; const [dx, dy] = ar.aim; ar.start = null; ar.aim = null; if (ar.st === 'aim') arShoot(dx, dy); };
-function arInfo() { const done = AR_LV.filter((L, i) => ars.stars[i]).length; showStats([['Étoiles', Object.values(ars.stars).reduce((a, b) => a + b, 0) + ' / ' + AR_LV.length * 3], ['Épreuves réussies', done + ' / ' + AR_LV.length], ['Dans le mille', ars.bulls], ['Tir rapide', ars.rapid], ['Pièces', ars.gold], ['Arc', 'puissance ' + ars.bow.pow + ' · viseur ' + ars.bow.eye + ' · carquois ' + ars.bow.quiv], ['Saison', ars.season.id === arSeason() ? ars.season.best + (ars.season.best === 1 ? 'er' : 'e') + ' sur 8' : '—'], ['Podiums', ars.podiums]]); }
+function arInfo() {
+  setTimeout(arTrophies); const done = AR_LV.filter((L, i) => ars.stars[i]).length; showStats([['Étoiles', Object.values(ars.stars).reduce((a, b) => a + b, 0) + ' / ' + AR_LV.length * 3], ['Épreuves réussies', done + ' / ' + AR_LV.length], ['Dans le mille', ars.bulls], ['Tir rapide', ars.rapid], ['Pièces', ars.gold], ['Arc', 'puissance ' + ars.bow.pow + ' · viseur ' + ars.bow.eye + ' · carquois ' + ars.bow.quiv], ['Saison', ars.season.id === arSeason() ? ars.season.best + (ars.season.best === 1 ? 'er' : 'e') + ' sur 8' : '—'], ['Podiums', ars.podiums]]); }
 $('gNew').onclick = () => { arMenu(); $('gNew').blur(); };
 $('gFs').onclick = () => { $('gFs').blur(); if (document.fullscreenElement) document.exitFullscreen(); else cv.parentElement.requestFullscreen?.().catch(() => {}); };
 // le tir qui touche le centre de la première cible encore là, sans vent (pour la vérification et le test)
@@ -688,6 +692,14 @@ function arSolve(tgs, wW, fine = true) {
   console.assert(!bad.length, 'archer', bad); view.dataset.selfcheck = bad.join(' | ') || 'ok';
 }
 cv.__ar = {st: () => ar, solve: () => arSolve(ar.tg.map(t => ({...t})), ar.worldW), start: arStart, menu: arMenu, open: arOpen, tour: arTour, end: arEnd, buy: arBuy};  // pour le test
+// les trophées, tirés des statistiques et des records gardés (aussi à l'ouverture : ce qui a été fait avant compte)
+function arTrophies() {
+  const st = Object.values(ars.stars), n = st.reduce((a, b) => a + b, 0), sig = [ars.rounds, ars.bulls, n, ars.podiums, ars.champion, ars.rapid, JSON.stringify(ars.bow)].join(); if (sig === arTrophies.sig) return; arTrophies.sig = sig;
+  trophyRecord('rapide', ars.rapid || null); trophyRecord('etoiles', n || null); trophyRecord('centres', ars.bulls || null);
+  if (ars.rounds >= 1) trophy('premier'); if (ars.bulls >= 1) trophy('mille'); if (ars.bulls >= 50) trophy('mille50'); if (st.some(s => s >= 3)) trophy('etoiles3');
+  if (AR_LV.every((L, i) => ars.stars[i])) trophy('toutes'); if (AR_LV.every((L, i) => ars.stars[i] >= 3)) trophy('parfait');
+  if (ars.podiums >= 1) trophy('podium'); if (ars.champion) trophy('champion'); if (AR_BOW.every(([, k, max]) => ars.bow[k] >= max)) trophy('arc');
+}
 ctx.onOpen(() => { if (!ar) arMenu(); ar.mode = 'play'; gameLoop(ar, 'archer', arUpdate, arDraw); arInfo(); });
 
 }
